@@ -1,0 +1,305 @@
+You are a senior Python backend engineer and system instrumentation expert.
+
+Your task is to modify an existing Python speech-processing application (app.py) to implement **production-grade logging and performance instrumentation** according to the following detailed requirements.
+
+The application performs:
+
+1. Audio loading and preprocessing
+2. Speaker diarization
+3. Segment merging and overlap resolution
+4. Whisper transcription
+5. Transcript output generation
+
+Your objective is to **enhance the entire codebase with comprehensive logging using Python's logging module**, ensuring maintainability, observability, and debuggability.
+
+Follow these instructions strictly.
+
+---
+
+GENERAL LOGGING REQUIREMENTS
+
+1. Use Python's logging module with the following log levels:
+   DEBUG – detailed debugging information
+   INFO – major processing steps
+   WARNING – unusual but non-fatal issues
+   ERROR – failures
+   CRITICAL – fatal errors
+
+2. Configure logging in a dedicated setup function or section.
+
+3. Logging output must include:
+
+* timestamp
+* log level
+* message
+
+Example format:
+
+%(asctime)s - %(levelname)s - %(message)s
+
+---
+
+LOG FILE MANAGEMENT
+
+Create a logs directory automatically if it does not exist.
+
+Log files must use timestamp naming:
+
+logs/app_YYYY-MM-DD_HH-MM-SS.log
+
+Example:
+
+logs/app_2024-01-15_10-30-45.log
+
+Configure two handlers:
+
+Console handler (INFO level)
+
+File handler (DEBUG level)
+
+---
+
+FUNCTION INSTRUMENTATION REQUIREMENTS
+
+Add logging to the following functions.
+
+segment_to_float32()
+
+Log:
+• function entry with input parameters
+• input audio shape and dtype
+• output array shape and dtype
+• execution time
+
+Example:
+
+Entering segment_to_float32()
+Input dtype=int16 shape=(32000,)
+Output dtype=float32 shape=(32000,)
+Execution time=0.002s
+
+---
+
+merge_same_speaker()
+
+Log:
+
+• number of segments before merge
+• number after merge
+• each merge operation (DEBUG level)
+
+Also document time complexity:
+
+O(n) where n is number of segments.
+
+---
+
+split_overlaps()
+
+Log:
+
+• overlaps detected
+• segments split
+• before/after segment counts
+
+Document complexity:
+
+O(n)
+
+---
+
+build_clean_segments()
+
+Log:
+
+• number of raw segments
+• number after filtering
+• processing steps applied
+
+---
+
+MAIN EXECUTION FLOW
+
+Log major pipeline stages:
+
+Starting audio processing
+
+Audio loaded
+duration
+sample_rate
+channels
+
+Speaker diarization started
+
+Speaker diarization completed
+segments detected
+execution time
+
+Segment cleaning pipeline started
+
+Merging segments
+before / after counts
+
+Splitting overlaps
+before / after counts
+
+Transcription started
+
+For each segment:
+
+Segment start/end timestamps
+speaker id
+transcription success/failure
+processing time
+
+After transcription:
+
+Total segments processed
+total transcription time
+
+Final output path written
+
+---
+
+PERFORMANCE TRACKING
+
+Implement decorators or utilities to measure:
+
+Execution time
+Memory usage
+
+Use:
+
+time.perf_counter()
+psutil.Process().memory_info()
+
+Log memory usage:
+
+Before major operations
+After major operations
+
+Example:
+
+Memory usage before diarization: 512 MB
+Memory usage after diarization: 640 MB
+
+---
+
+ERROR HANDLING
+
+Wrap critical sections in try/except blocks.
+
+Log exceptions using:
+
+logger.exception()
+
+Examples of errors to log:
+
+Missing audio file
+Invalid authentication token
+Empty segment list
+Failed transcription
+Diarization failure
+
+Example log:
+
+ERROR - Failed to load audio file: audio.mp3
+Traceback (most recent call last)...
+
+---
+
+UNUSUAL CONDITIONS
+
+Log warnings for:
+
+Empty segment results
+Extremely short segments
+Overlapping segments
+Whisper returning empty transcription
+
+Example:
+
+WARNING - Empty segment detected at 23.5s
+
+---
+
+OUTPUT REQUIREMENTS
+
+Provide the following in the final code:
+
+1. Complete enhanced app.py
+2. Logging configuration
+3. Timing decorator
+4. Memory logging utilities
+5. Logging statements in all required functions
+6. Proper exception handling
+7. Comments explaining instrumentation
+8. Example of generated log output
+
+Ensure the final code is clean, readable, and production ready.
+
+---
+
+EXPECTED LOG OUTPUT EXAMPLE
+
+2024-01-15 10:30:45,123 - INFO - Starting audio processing: audio.mp3
+2024-01-15 10:30:45,125 - INFO - Audio loaded: duration=120.5s sample_rate=16000 channels=1
+2024-01-15 10:31:20,450 - INFO - Diarization completed: 45 segments found execution_time=35.25s
+2024-01-15 10:31:20,460 - INFO - Merging segments: before=42 after=38
+2024-01-15 10:31:20,470 - INFO - Splitting overlaps: before=38 after=35
+2024-01-15 10:31:25,123 - INFO - Segment [5.23s -- 8.45s] SPEAKER_00 transcribed duration=0.5s
+2024-01-15 10:35:30,789 - INFO - Transcription completed: 35 segments processed total_time=245.67s
+2024-01-15 10:35:30,790 - INFO - Output written to transcript.txt
+
+---
+
+Write the full improved Python implementation.
+import os
+import logging
+from datetime import datetime
+
+def setup_logging():
+    """
+    Configures the logging for the application.
+    Creates a 'logs' directory if it doesn't exist.
+    Sets up a file handler (DEBUG) with timestamped naming and a console handler (INFO).
+    Returns the configured logger.
+    """
+    # Create logs directory automatically if it does not exist
+    log_dir = "logs"
+    if not os.path.exists(log_dir):
+        os.makedirs(log_dir)
+
+    # Log files must use timestamp naming: logs/app_YYYY-MM-DD_HH-MM-SS.log
+    timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    log_filename = os.path.join(log_dir, f"app_{timestamp}.log")
+
+    # Create logger
+    logger = logging.getLogger("speech_app")
+    
+    # Set the root logger level to DEBUG so it passes all messages to handlers
+    logger.setLevel(logging.DEBUG)
+
+    # Define the log message format: timestamp - log level - message
+    formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+
+    # Prevent adding handlers multiple times if setup_logging is called more than once
+    if not logger.handlers:
+        # Configure File Handler (DEBUG level)
+        file_handler = logging.FileHandler(log_filename)
+        file_handler.setLevel(logging.DEBUG)
+        file_handler.setFormatter(formatter)
+
+        # Configure Console Handler (INFO level)
+        console_handler = logging.StreamHandler()
+        console_handler.setLevel(logging.INFO)
+        console_handler.setFormatter(formatter)
+
+        # Add handlers to the logger
+        logger.addHandler(file_handler)
+        logger.addHandler(console_handler)
+
+    return logger
+
+# Example of obtaining the logger
+# logger = setup_logging()
